@@ -3,6 +3,7 @@
 
 import html
 import hashlib
+import hmac
 import os
 import re
 import tempfile
@@ -11,6 +12,7 @@ from pathlib import Path
 
 import uvicorn
 from mcp.server import MCPServer
+from mcp.server.mcpserver import Context
 from mcp.server.transport_security import TransportSecuritySettings
 from starlette.responses import FileResponse, HTMLResponse, PlainTextResponse
 from starlette.routing import Route
@@ -29,12 +31,15 @@ RULES = """Topo-agent experiment rules:
 7. Submit all annotated routes, including failures; do not omit difficult cases.
 8. Record your name, code commit, method, settings, and what changed in MCP and the repository docs.
 9. Keep API keys, personal information, and unlicensed photos out of submissions.
-10. Accuracy is rescored by this server. Seconds are measured by the submitter and are not independently verified.
-11. This is a development set, not an independent final test set.
+10. A team write token is required for submit_experiment and submit_run; never put it in repository files.
+11. Accuracy is rescored by this server. Seconds are measured by the submitter and are not independently verified.
+12. This is a development set, not an independent final test set.
 """
 
 
-def create_app(topo_root, database, public_base_url, allowed_host=None):
+def create_app(topo_root, database, public_base_url, allowed_host=None, write_token=None):
+    if not isinstance(write_token, str) or len(write_token) < 32:
+        raise ValueError("A write token of at least 32 characters is required")
     benchmark = Benchmark(topo_root, os.environ.get("TOPO_MCP_DATA_DIR"))
     store = Store(database)
     public_base_url = public_base_url.rstrip("/")
@@ -68,9 +73,10 @@ def create_app(topo_root, database, public_base_url, allowed_host=None):
         return store.experiments(query[:100], min(max(limit, 1), 100))
 
     @mcp.tool()
-    def submit_experiment(author: str, title: str, summary: str,
+    def submit_experiment(ctx: Context, author: str, title: str, summary: str,
                           commit_sha: str = "", tags: list[str] | None = None) -> dict:
         """Append an experiment note that other team agents can search."""
+        _require_write(ctx, write_token)
         author = _text(author, "author", 80)
         title = _text(title, "title", 160)
         summary = _text(summary, "summary", 4000)
@@ -82,9 +88,10 @@ def create_app(topo_root, database, public_base_url, allowed_host=None):
         return store.add_experiment(author, title, summary, commit_sha, tags)
 
     @mcp.tool()
-    def submit_run(author: str, method: str, commit_sha: str, dataset_version: str,
-                   rows: list[dict], notes: str = "") -> dict:
+    def submit_run(ctx: Context, author: str, method: str, commit_sha: str,
+                   dataset_version: str, rows: list[dict], notes: str = "") -> dict:
         """Submit all case predictions; the server recomputes accuracy and updates the leaderboard."""
+        _require_write(ctx, write_token)
         author = _text(author, "author", 80)
         method = _text(method, "method", 100)
         commit_sha = _commit(commit_sha, required=True)
@@ -172,6 +179,13 @@ def _text(value, name, limit):
     if not isinstance(value, str) or not 1 <= len(value.strip()) <= limit:
         raise ValueError(f"{name} must contain 1-{limit} characters")
     return value.strip()
+
+
+def _require_write(ctx, write_token):
+    headers = ctx.headers if ctx is not None else None
+    provided = (headers or {}).get("authorization", "")
+    if not hmac.compare_digest(provided, f"Bearer {write_token}"):
+        raise PermissionError("A valid team write token is required")
 
 
 def _commit(value, required):
@@ -276,7 +290,10 @@ def main():
     host = os.environ.get("TOPO_MCP_HOST", "127.0.0.1")
     port = int(os.environ.get("TOPO_MCP_PORT", "8766"))
     allowed_host = os.environ.get("TOPO_MCP_ALLOWED_HOST", f"{host}:{port}")
-    app, _, _ = create_app(root, database, public_url, allowed_host)
+    token_file = os.environ.get("TOPO_MCP_WRITE_TOKEN_FILE")
+    write_token = (Path(token_file).read_text(encoding="utf-8").strip() if token_file
+                   else os.environ.get("TOPO_MCP_WRITE_TOKEN", ""))
+    app, _, _ = create_app(root, database, public_url, allowed_host, write_token)
     uvicorn.run(app, host=host, port=port)
 
 

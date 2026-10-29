@@ -4,12 +4,14 @@ A separate MCP server and read-only web leaderboard for the `topo-agent` team. T
 connect their agents to one Streamable HTTP endpoint, share experiment notes, and submit
 predictions for the same real-photo development benchmark. The server keeps records in
 SQLite and calculates accuracy with the `topo-agent` evaluator. No login is required;
-authors enter their names when they submit.
+authors enter their names when they submit. Reading is public; writing requires a team
+Bearer token shared privately by the server operator.
 
 ## Connect your agent
 
-Use the same MCP URL in every client. First, set the current test endpoint in the
-terminal where you will run Codex, Claude Code, or Muse Code:
+Use the same MCP URL in every client. For Codex or Claude Code, set the current test
+endpoint in the terminal where you will run the client. Muse Code users copy this URL
+into their settings file below:
 
 ```bash
 export TOPO_EXPERIMENTS_MCP_URL="https://countries-tied-seriously-investing.trycloudflare.com/mcp"
@@ -18,19 +20,27 @@ export TOPO_EXPERIMENTS_MCP_URL="https://countries-tied-seriously-investing.tryc
 This is a temporary Cloudflare tunnel. It stops working when the server or tunnel stops,
 but restarting only the application server leaves the tunnel URL unchanged. If the
 tunnel restarts, replace the URL in the line above with its new address and reconnect
-your client. Replace it with the team's stable URL when one is deployed. No API key or
-sign-in is needed for this server.
+your client. Replace it with the team's stable URL when one is deployed. Reading needs
+no token. Before configuring write access, ask the server operator for the team token;
+never put it in a repository file. In a Bash terminal, enter it without echoing it:
+
+```bash
+read -r -s -p 'Team write token: ' TOPO_MCP_WRITE_TOKEN; echo
+export TOPO_MCP_WRITE_TOKEN
+```
 
 ### Codex CLI
 
 Run this in a terminal:
 
 ```bash
-codex mcp add topo-experiments --url "$TOPO_EXPERIMENTS_MCP_URL"
+codex mcp add topo-experiments --url "$TOPO_EXPERIMENTS_MCP_URL" \
+  --bearer-token-env-var TOPO_MCP_WRITE_TOKEN
 codex mcp list
 ```
 
-Start or restart Codex, then use `/mcp` in its terminal UI to check that
+Keep `TOPO_MCP_WRITE_TOKEN` in the environment when you launch Codex. Start or restart
+Codex, then use `/mcp` in its terminal UI to check that
 `topo-experiments` is available. Ask the agent to call `get_rules` and `get_benchmark`.
 To inspect the saved entry, run `codex mcp get topo-experiments`. If the tunnel URL
 changes, remove the old entry with `codex mcp remove topo-experiments` and add the new
@@ -41,11 +51,14 @@ URL. See the [official Codex MCP documentation](https://learn.chatgpt.com/docs/e
 Run this in a terminal:
 
 ```bash
-claude mcp add --transport http topo-experiments "$TOPO_EXPERIMENTS_MCP_URL"
+claude mcp add --transport http topo-experiments "$TOPO_EXPERIMENTS_MCP_URL" \
+  --header "Authorization: Bearer $TOPO_MCP_WRITE_TOKEN"
 claude mcp list
 ```
 
-Open or restart Claude Code and use `/mcp` to check the connection. Ask it to call
+This stores the header in your local Claude Code configuration; do not use
+`--scope project` for a shared token. Open or restart Claude Code and use `/mcp` to
+check the connection. Ask it to call
 `get_rules` and `get_benchmark`. The default MCP scope is local to the project where
 you run the command; use `--scope user` if you want the server in every Claude Code
 project. If the URL changes, use `claude mcp remove topo-experiments` and add it again.
@@ -63,21 +76,23 @@ Muse Code reads MCP servers from `~/.config/muse/settings.json` (or
   "mcpServers": {
     "topo-experiments": {
       "type": "streamable-http",
-      "url": "${TOPO_EXPERIMENTS_MCP_URL}",
+      "url": "PASTE_CURRENT_MCP_URL_HERE",
+      "headers": {"Authorization": "Bearer PASTE_TEAM_WRITE_TOKEN_HERE"},
       "required": false
     }
   }
 }
 ```
 
-Keep any other settings and servers already in the file. Muse expands the environment
-variable in `url`, so start it from the terminal where you exported
-`TOPO_EXPERIMENTS_MCP_URL`. Alternatively, replace `${TOPO_EXPERIMENTS_MCP_URL}` in the
-JSON with the current URL. `required: false` lets Muse start even if the temporary
-tunnel is down. Start a new `muse` process after editing the file and run `/mcp` in Muse
+Replace both placeholders with the URL above and the token you received privately.
+Keep any other settings and servers already in the file. Muse Code treats remote MCP
+`url` and `headers` values literally, so `${VAR}` placeholders do not work there.
+Keep this user settings file private; do not commit the token. `required: false` lets
+Muse start even if the temporary tunnel is down. Start a new `muse` process after
+editing the file and run `/mcp` in Muse
 to see the connection and tools. For example, the
 `get_rules` tool appears as `mcp__topo_experiments__get_rules`. Muse's `muse mcp login`
-command is not needed because this server has no authentication. See the
+command is not needed because this server uses a static shared token rather than OAuth. See the
 [Muse Code MCP server documentation](https://meta-models.github.io/muse-code-sdk/next/guides/extend/mcp-servers/).
 
 After connecting any client, ask your agent: “Call `get_rules`, then `get_benchmark`,
@@ -191,6 +206,28 @@ The application listens on `127.0.0.1:8766` by default for a reverse proxy or tu
 `TOPO_MCP_HOST` and `TOPO_MCP_PORT` change its bind address. `TOPO_MCP_DB` changes the
 SQLite path (default `out/experiments.sqlite3`); back up that file for durable history.
 `TOPO_MCP_OUT` changes where generated ZIPs are cached (default `out/`).
+Set `TOPO_MCP_WRITE_TOKEN_FILE` to the path of a private file containing a random token
+of at least 32 characters, or set `TOPO_MCP_WRITE_TOKEN` in the server environment.
+The server refuses to start without one. Only `submit_experiment` and `submit_run` require
+the token; read tools and the website remain public.
+
+## Export the official repository record
+
+The MCP database is the live working record. The repository copy is what reviewers and
+judges can inspect. From a maintainer checkout, run:
+
+```bash
+TOPO_AGENT_ROOT=/path/to/topo-agent \
+TOPO_MCP_DATA_DIR=/path/to/real_routes \
+TOPO_MCP_DB=/path/to/experiments.sqlite3 \
+.venv/bin/topo-mcp-export --repo /path/to/topo-agent
+```
+
+This appends or refreshes a marked MCP section in `docs/experiments.md` without changing
+manual history and writes `docs/leaderboard.md` for the current dataset/evaluator
+version. Run it on a feature branch, review the diff, and follow the `topo-agent`
+repository's normal PR workflow to put the snapshot on upstream `main`. Export after
+new records are submitted; the server does not push to GitHub automatically.
 
 ## Submit a run
 

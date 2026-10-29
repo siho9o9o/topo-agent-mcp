@@ -43,10 +43,14 @@ class Store:
 
     def experiments(self, query="", limit=30):
         with self._connect() as db:
-            rows = db.execute("""SELECT * FROM experiments
+            sql = """SELECT * FROM experiments
                 WHERE title LIKE ? OR summary LIKE ? OR tags LIKE ?
-                ORDER BY created_at DESC LIMIT ?""",
-                (*[f"%{query}%"] * 3, limit)).fetchall()
+                ORDER BY created_at DESC, rowid DESC"""
+            params = [f"%{query}%"] * 3
+            if limit is not None:
+                sql += " LIMIT ?"
+                params.append(limit)
+            rows = db.execute(sql, params).fetchall()
         return [{**dict(row), "tags": json.loads(row["tags"])} for row in rows]
 
     def add_run(self, author, method, commit_sha, notes, version, metrics, rows):

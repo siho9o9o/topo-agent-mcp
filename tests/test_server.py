@@ -13,7 +13,9 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
+import httpx2
 from mcp import Client
+from mcp.client.streamable_http import streamable_http_client
 
 from topo_agent_mcp.app import _archive
 from topo_agent_mcp.benchmark import Benchmark
@@ -22,6 +24,7 @@ from topo_agent_mcp.store import Store
 
 ROOT = Path(os.environ.get("TOPO_AGENT_ROOT", Path(__file__).resolve().parents[2] / "topo-agent"))
 DATA = os.environ.get("TOPO_MCP_DATA_DIR")
+WRITE_TOKEN = "test-team-write-token-0123456789abcdef"
 
 
 class StoreTests(unittest.TestCase):
@@ -49,6 +52,7 @@ class ServerTests(unittest.TestCase):
                    "TOPO_MCP_DB": str(Path(directory) / "db.sqlite3"),
                    "TOPO_MCP_OUT": str(Path(directory) / "out"),
                    "TOPO_MCP_PORT": str(port),
+                   "TOPO_MCP_WRITE_TOKEN": WRITE_TOKEN,
                    "TOPO_MCP_PUBLIC_URL": f"http://127.0.0.1:{port}"}
             process = subprocess.Popen([sys.executable, "-m", "topo_agent_mcp.app"],
                                        cwd=directory, env=env, stdout=subprocess.DEVNULL,
@@ -76,7 +80,8 @@ class ServerTests(unittest.TestCase):
                 process.stderr.close()
 
     async def _exercise_mcp(self, port, benchmark):
-        async with Client(f"http://127.0.0.1:{port}/mcp") as client:
+        url = f"http://127.0.0.1:{port}/mcp"
+        async with Client(url) as client:
             tools = await client.list_tools()
             self.assertIn("get_dataset_download", [tool.name for tool in tools.tools])
             rules = (await client.call_tool("get_rules")).content[0].text
@@ -89,19 +94,30 @@ class ServerTests(unittest.TestCase):
             self.assertTrue(download["url"].endswith("/dataset/real_routes.zip"))
             with urllib.request.urlopen(download["url"], timeout=30) as response:
                 self.assertEqual(download["sha256"], hashlib.sha256(response.read()).hexdigest())
-            note = await client.call_tool("submit_experiment", {"author": "Alex", "title": "Trial",
-                "summary": "Initial observation", "commit_sha": "abc1234", "tags": ["test"]})
-            self.assertFalse(note.is_error)
-            rows = [{"case_id": item["id"], "holds": [], "seconds": 0.2}
-                    for item in benchmark.items]
-            run = await client.call_tool("submit_run", {"author": "Alex", "method": "empty",
-                "commit_sha": "abc1234", "dataset_version": benchmark.version, "rows": rows})
-            self.assertFalse(run.is_error)
-            run_data = json.loads(run.content[0].text)
-            self.assertEqual(run_data["metrics"]["recall"], 0)
-            self.assertTrue(run_data["new_frontier_record"])
-            leaderboard = json.loads((await client.call_tool("get_leaderboard")).content[0].text)
-            self.assertEqual(len(leaderboard["runs"]), 1)
-            self.assertEqual(leaderboard["frontier_run_ids"], [run_data["run_id"]])
-            notes = await client.call_tool("search_experiments")
-            self.assertEqual(len(notes.content), 2)
+            denied = await client.call_tool("submit_experiment", {"author": "Alex",
+                "title": "Denied", "summary": "No token"})
+            self.assertTrue(denied.is_error)
+            self.assertEqual((await client.call_tool("search_experiments")).content, [])
+        async with httpx2.AsyncClient(headers={"Authorization": "Bearer invalid-token"}) as http:
+            async with Client(streamable_http_client(url, http_client=http)) as client:
+                denied = await client.call_tool("submit_experiment", {"author": "Alex",
+                    "title": "Denied", "summary": "Wrong token"})
+                self.assertTrue(denied.is_error)
+        async with httpx2.AsyncClient(headers={"Authorization": f"Bearer {WRITE_TOKEN}"}) as http:
+            async with Client(streamable_http_client(url, http_client=http)) as client:
+                note = await client.call_tool("submit_experiment", {"author": "Alex", "title": "Trial",
+                    "summary": "Initial observation", "commit_sha": "abc1234", "tags": ["test"]})
+                self.assertFalse(note.is_error)
+                rows = [{"case_id": item["id"], "holds": [], "seconds": 0.2}
+                        for item in benchmark.items]
+                run = await client.call_tool("submit_run", {"author": "Alex", "method": "empty",
+                    "commit_sha": "abc1234", "dataset_version": benchmark.version, "rows": rows})
+                self.assertFalse(run.is_error)
+                run_data = json.loads(run.content[0].text)
+                self.assertEqual(run_data["metrics"]["recall"], 0)
+                self.assertTrue(run_data["new_frontier_record"])
+                leaderboard = json.loads((await client.call_tool("get_leaderboard")).content[0].text)
+                self.assertEqual(len(leaderboard["runs"]), 1)
+                self.assertEqual(leaderboard["frontier_run_ids"], [run_data["run_id"]])
+                notes = await client.call_tool("search_experiments")
+                self.assertEqual(len(notes.content), 2)

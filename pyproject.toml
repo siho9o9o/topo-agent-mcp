@@ -8,6 +8,7 @@ dependencies = ["mcp>=2,<3", "pillow>=10"]
 
 [project.scripts]
 topo-mcp = "topo_agent_mcp.app:main"
+topo-mcp-export = "topo_agent_mcp.export:main"
 
 [build-system]
 requires = ["setuptools>=68"]
