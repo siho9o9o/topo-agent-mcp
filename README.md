@@ -14,13 +14,14 @@ endpoint in the terminal where you will run the client. Muse Code users copy thi
 into their settings file below:
 
 ```bash
-export TOPO_EXPERIMENTS_MCP_URL="https://countries-tied-seriously-investing.trycloudflare.com/mcp"
+export TOPO_EXPERIMENTS_MCP_URL="https://stars-hypothetical-joyce-qty.trycloudflare.com/mcp"
 ```
 
-This is a temporary Cloudflare tunnel. It stops working when the server or tunnel stops,
-but restarting only the application server leaves the tunnel URL unchanged. If the
-tunnel restarts, replace the URL in the line above with its new address and reconnect
-your client. Replace it with the team's stable URL when one is deployed. Reading needs
+This is a temporary Cloudflare Quick Tunnel. Its URL changes whenever the tunnel
+process restarts, including after an unexpected stop. The address above was checked on
+2026-10-30 (KST); ask the server operator for the current address if it stops working.
+Existing MCP installations must be updated when it changes. A stable team URL requires
+a named tunnel and a published hostname. Reading needs
 no token. Before configuring write access, ask the server operator for the team token;
 never put it in a repository file. In a Bash terminal, enter it without echoing it:
 
