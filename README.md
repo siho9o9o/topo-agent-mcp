@@ -95,10 +95,21 @@ to see the connection and tools. For example, the
 command is not needed because this server uses a static shared token rather than OAuth. See the
 [Muse Code MCP server documentation](https://meta-models.github.io/muse-code-sdk/next/guides/extend/mcp-servers/).
 
-After connecting any client, ask your agent: “Call `get_agent_setup` to configure
-project instructions, then `get_rules` and `get_benchmark`,
-and summarize the current leaderboard.” To obtain the photos, ask it to call
-`get_dataset_download` and download the returned ZIP URL to your machine.
+### Required first step after connecting
+
+Open your `topo-agent` checkout in the connected client and send this prompt to your
+agent once. Installing the MCP server alone does not edit project instructions.
+
+> Call the `topo-experiments` MCP tools `get_agent_setup` and `get_rules`. Read the
+> existing `AGENTS.md` in this topo-agent checkout. For Codex or Muse Code, add the
+> shared experiment MCP section from `get_agent_setup` to `AGENTS.md` without removing
+> any existing rules. For Claude Code, create or update `CLAUDE.md` with `@AGENTS.md`
+> and the shared experiment MCP section. Show me the file diff. Never put the team
+> write token in a repository file.
+
+After that, ask your agent to call `get_benchmark` and summarize the current
+leaderboard. To obtain the photos, ask it to call `get_dataset_download` and download
+the returned ZIP URL to your machine.
 
 ## Give your agent project rules
 
