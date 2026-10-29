@@ -78,6 +78,62 @@ After connecting any client, ask your agent: “Call `get_rules`, then `get_benc
 and summarize the current leaderboard.” To obtain the photos, ask it to call
 `get_dataset_download` and download the returned ZIP URL to your machine.
 
+## Give your agent project rules
+
+Connecting MCP exposes tools; it does not tell a coding agent when to use them or how
+to work in `topo-agent`. Use the existing
+[`topo-agent/AGENTS.md`](https://github.com/Mirai-Climbing/topo-agent/blob/main/AGENTS.md)
+as the source for project rules. In particular, it requires English repository content,
+feature branches on the upstream repository, no push to `main`, user approval before
+opening a PR, the full offline unit suite and `pyflakes` before a PR, benchmark results
+for behavior changes, and careful handling of API keys and real photos.
+
+**Codex and Muse Code users:** keep the repository's `AGENTS.md`. Add the following
+section to it for the shared experiment workflow. Do not replace its existing Git,
+testing, privacy, or evaluation rules:
+
+```markdown
+## Shared experiment MCP
+
+- Connect the `topo-experiments` MCP server before doing experiment work.
+- Before an experiment, call `get_rules`, `search_experiments`, and `get_leaderboard`.
+- Call `get_benchmark` to obtain the current dataset version and all required case IDs.
+- Use `get_dataset_download` when you need the eight-photo dataset; verify its SHA-256.
+- After every experiment, call `submit_experiment` with your name, code commit, settings,
+  result, and what you learned. Also update `docs/experiments.md` and
+  `docs/learnings.md` as required by this repository's AGENTS.md.
+- For a benchmark run, call `submit_run` with all annotated routes, including failures.
+  Do not submit a partial run as a leaderboard result.
+- Keep predictions and traces under `out/`; never send API keys or personal data to MCP.
+```
+
+**Claude Code users:** put instructions in `CLAUDE.md` at the root of your `topo-agent`
+checkout. The first line imports the existing `AGENTS.md`, so Claude receives the full
+project rules, including Git push, PR, unit test, and `pyflakes` requirements. Add the
+MCP workflow there too:
+
+```markdown
+@AGENTS.md
+
+## Claude Code and shared experiments
+
+- Follow the imported AGENTS.md: work on upstream feature branches, never push to
+  `main`, and ask the user before opening a PR.
+- Before a PR, run the complete unit test suite and `pyflakes`. Include the required
+  benchmark results for behavior changes. Do not weaken tests or change evaluation
+  scoring rules without the user's approval.
+- Before an experiment, call the `topo-experiments` MCP tools `get_rules`,
+  `search_experiments`, `get_leaderboard`, and `get_benchmark`.
+- Use `get_dataset_download` to get the dataset URL and verify the ZIP's SHA-256.
+- After an experiment, call `submit_experiment` with your name, commit, settings,
+  result, and learning. Update `docs/experiments.md` and `docs/learnings.md` too.
+- Submit complete 68-route benchmark predictions with `submit_run`, including failures.
+- Keep traces under `out/`; never send API keys or personal data to MCP.
+```
+
+Claude Code supports the `@AGENTS.md` import in `CLAUDE.md`; see its
+[project memory documentation](https://code.claude.com/docs/en/memory).
+
 ## What it provides
 
 | MCP tool | Purpose |

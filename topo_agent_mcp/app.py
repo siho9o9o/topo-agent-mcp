@@ -21,13 +21,16 @@ from topo_agent_mcp.store import Store
 
 RULES = """Topo-agent experiment rules:
 1. Follow the AGENTS.md in the topo-agent repository.
-2. Read existing experiments and the current leaderboard before starting.
-3. Use the fixed real_routes manifest and evaluator version returned by get_benchmark.
-4. Submit all annotated routes, including failures; do not omit difficult cases.
-5. Record your name, code commit, method, settings, and what changed.
-6. Keep API keys, personal information, and unlicensed photos out of submissions.
-7. Accuracy is rescored by this server. Seconds are measured by the submitter and are not independently verified.
-8. This is a development set, not an independent final test set.
+2. In topo-agent, work on upstream feature branches; never push to main. Ask the user before opening a PR.
+3. Before a PR, run the full offline unit suite and pyflakes. Include benchmark results for behavior changes.
+4. Do not change eval.py scoring semantics without explicit user approval.
+5. Read existing experiments and the current leaderboard before starting.
+6. Use the fixed real_routes manifest and evaluator version returned by get_benchmark.
+7. Submit all annotated routes, including failures; do not omit difficult cases.
+8. Record your name, code commit, method, settings, and what changed in MCP and the repository docs.
+9. Keep API keys, personal information, and unlicensed photos out of submissions.
+10. Accuracy is rescored by this server. Seconds are measured by the submitter and are not independently verified.
+11. This is a development set, not an independent final test set.
 """
 
 

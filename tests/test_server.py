@@ -79,6 +79,9 @@ class ServerTests(unittest.TestCase):
         async with Client(f"http://127.0.0.1:{port}/mcp") as client:
             tools = await client.list_tools()
             self.assertIn("get_dataset_download", [tool.name for tool in tools.tools])
+            rules = (await client.call_tool("get_rules")).content[0].text
+            self.assertIn("never push to main", rules)
+            self.assertIn("pyflakes", rules)
             info = json.loads((await client.call_tool("get_benchmark")).content[0].text)
             self.assertEqual(info["routes"], 68)
             download = json.loads((await client.call_tool("get_dataset_download")).content[0].text)
