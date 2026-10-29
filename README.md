@@ -8,22 +8,25 @@ authors enter their names when they submit.
 
 ## Connect your agent
 
-Use the same MCP URL in every client. The current test endpoint is:
+Use the same MCP URL in every client. First, set the current test endpoint in the
+terminal where you will run Codex, Claude Code, or Muse Code:
 
-```text
-https://countries-tied-seriously-investing.trycloudflare.com/mcp
+```bash
+export TOPO_EXPERIMENTS_MCP_URL="https://countries-tied-seriously-investing.trycloudflare.com/mcp"
 ```
 
 This is a temporary Cloudflare tunnel. It stops working when the server or tunnel stops,
-and a restarted tunnel gets a different URL. Replace it with the team's stable URL when
-one is deployed. No API key or sign-in is needed for this server.
+but restarting only the application server leaves the tunnel URL unchanged. If the
+tunnel restarts, replace the URL in the line above with its new address and reconnect
+your client. Replace it with the team's stable URL when one is deployed. No API key or
+sign-in is needed for this server.
 
 ### Codex CLI
 
 Run this in a terminal:
 
 ```bash
-codex mcp add topo-experiments --url https://countries-tied-seriously-investing.trycloudflare.com/mcp
+codex mcp add topo-experiments --url "$TOPO_EXPERIMENTS_MCP_URL"
 codex mcp list
 ```
 
@@ -38,7 +41,7 @@ URL. See the [official Codex MCP documentation](https://learn.chatgpt.com/docs/e
 Run this in a terminal:
 
 ```bash
-claude mcp add --transport http topo-experiments https://countries-tied-seriously-investing.trycloudflare.com/mcp
+claude mcp add --transport http topo-experiments "$TOPO_EXPERIMENTS_MCP_URL"
 claude mcp list
 ```
 
@@ -60,16 +63,19 @@ Muse Code reads MCP servers from `~/.config/muse/settings.json` (or
   "mcpServers": {
     "topo-experiments": {
       "type": "streamable-http",
-      "url": "https://countries-tied-seriously-investing.trycloudflare.com/mcp",
+      "url": "${TOPO_EXPERIMENTS_MCP_URL}",
       "required": false
     }
   }
 }
 ```
 
-Keep any other settings and servers already in the file. `required: false` lets Muse
-start even if the temporary tunnel is down. Start a new `muse` process after editing
-the file and run `/mcp` in Muse to see the connection and tools. For example, the
+Keep any other settings and servers already in the file. Muse expands the environment
+variable in `url`, so start it from the terminal where you exported
+`TOPO_EXPERIMENTS_MCP_URL`. Alternatively, replace `${TOPO_EXPERIMENTS_MCP_URL}` in the
+JSON with the current URL. `required: false` lets Muse start even if the temporary
+tunnel is down. Start a new `muse` process after editing the file and run `/mcp` in Muse
+to see the connection and tools. For example, the
 `get_rules` tool appears as `mcp__topo_experiments__get_rules`. Muse's `muse mcp login`
 command is not needed because this server has no authentication. See the
 [Muse Code MCP server documentation](https://meta-models.github.io/muse-code-sdk/next/guides/extend/mcp-servers/).
