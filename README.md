@@ -6,6 +6,78 @@ predictions for the same real-photo development benchmark. The server keeps reco
 SQLite and calculates accuracy with the `topo-agent` evaluator. No login is required;
 authors enter their names when they submit.
 
+## Connect your agent
+
+Use the same MCP URL in every client. The current test endpoint is:
+
+```text
+https://countries-tied-seriously-investing.trycloudflare.com/mcp
+```
+
+This is a temporary Cloudflare tunnel. It stops working when the server or tunnel stops,
+and a restarted tunnel gets a different URL. Replace it with the team's stable URL when
+one is deployed. No API key or sign-in is needed for this server.
+
+### Codex CLI
+
+Run this in a terminal:
+
+```bash
+codex mcp add topo-experiments --url https://countries-tied-seriously-investing.trycloudflare.com/mcp
+codex mcp list
+```
+
+Start or restart Codex, then use `/mcp` in its terminal UI to check that
+`topo-experiments` is available. Ask the agent to call `get_rules` and `get_benchmark`.
+To inspect the saved entry, run `codex mcp get topo-experiments`. If the tunnel URL
+changes, remove the old entry with `codex mcp remove topo-experiments` and add the new
+URL. See the [official Codex MCP documentation](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
+
+### Claude Code
+
+Run this in a terminal:
+
+```bash
+claude mcp add --transport http topo-experiments https://countries-tied-seriously-investing.trycloudflare.com/mcp
+claude mcp list
+```
+
+Open or restart Claude Code and use `/mcp` to check the connection. Ask it to call
+`get_rules` and `get_benchmark`. The default MCP scope is local to the project where
+you run the command; use `--scope user` if you want the server in every Claude Code
+project. If the URL changes, use `claude mcp remove topo-experiments` and add it again.
+See the [official Claude Code MCP documentation](https://code.claude.com/docs/en/mcp).
+
+### Muse Code
+
+Muse Code reads MCP servers from `~/.config/muse/settings.json` (or
+`$XDG_CONFIG_HOME/muse/settings.json`). Add the `topo-experiments` entry to the existing
+`mcpServers` object. If the file does not exist, create it with this content:
+
+```json
+{
+  "schema_version": 1,
+  "mcpServers": {
+    "topo-experiments": {
+      "type": "streamable-http",
+      "url": "https://countries-tied-seriously-investing.trycloudflare.com/mcp",
+      "required": false
+    }
+  }
+}
+```
+
+Keep any other settings and servers already in the file. `required: false` lets Muse
+start even if the temporary tunnel is down. Start a new `muse` process after editing
+the file and run `/mcp` in Muse to see the connection and tools. For example, the
+`get_rules` tool appears as `mcp__topo_experiments__get_rules`. Muse's `muse mcp login`
+command is not needed because this server has no authentication. See the
+[Muse Code MCP server documentation](https://meta-models.github.io/muse-code-sdk/next/guides/extend/mcp-servers/).
+
+After connecting any client, ask your agent: “Call `get_rules`, then `get_benchmark`,
+and summarize the current leaderboard.” To obtain the photos, ask it to call
+`get_dataset_download` and download the returned ZIP URL to your machine.
+
 ## What it provides
 
 | MCP tool | Purpose |
@@ -57,12 +129,6 @@ The application listens on `127.0.0.1:8766` by default for a reverse proxy or tu
 `TOPO_MCP_HOST` and `TOPO_MCP_PORT` change its bind address. `TOPO_MCP_DB` changes the
 SQLite path (default `out/experiments.sqlite3`); back up that file for durable history.
 `TOPO_MCP_OUT` changes where generated ZIPs are cached (default `out/`).
-
-Add the MCP server to Codex with:
-
-```bash
-codex mcp add topo-experiments --url https://your-host.example/mcp
-```
 
 ## Submit a run
 
