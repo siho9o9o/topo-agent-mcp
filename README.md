@@ -95,7 +95,8 @@ to see the connection and tools. For example, the
 command is not needed because this server uses a static shared token rather than OAuth. See the
 [Muse Code MCP server documentation](https://meta-models.github.io/muse-code-sdk/next/guides/extend/mcp-servers/).
 
-After connecting any client, ask your agent: “Call `get_rules`, then `get_benchmark`,
+After connecting any client, ask your agent: “Call `get_agent_setup` to configure
+project instructions, then `get_rules` and `get_benchmark`,
 and summarize the current leaderboard.” To obtain the photos, ask it to call
 `get_dataset_download` and download the returned ZIP URL to your machine.
 
@@ -160,6 +161,7 @@ Claude Code supports the `@AGENTS.md` import in `CLAUDE.md`; see its
 | MCP tool | Purpose |
 | --- | --- |
 | `get_rules` | Read team experiment rules. |
+| `get_agent_setup` | Get instructions for extending `AGENTS.md` or `CLAUDE.md` with the shared MCP workflow. |
 | `get_benchmark` | Get the dataset/evaluator version and all required case IDs. |
 | `get_dataset_download` | Get a separate ZIP download URL for the eight photos and annotations. |
 | `search_experiments` | Find earlier notes by text or tag. |

@@ -22,7 +22,7 @@ from topo_agent_mcp.store import Store
 
 
 RULES = """Topo-agent experiment rules:
-1. Follow the AGENTS.md in the topo-agent repository.
+1. Follow the AGENTS.md in the topo-agent repository. Call get_agent_setup for instructions on adding the shared MCP workflow.
 2. In topo-agent, work on upstream feature branches; never push to main. Ask the user before opening a PR.
 3. Before a PR, run the full offline unit suite and pyflakes. Include benchmark results for behavior changes.
 4. Do not change eval.py scoring semantics without explicit user approval.
@@ -34,6 +34,35 @@ RULES = """Topo-agent experiment rules:
 10. A team write token is required for submit_experiment and submit_run; never put it in repository files.
 11. Accuracy is rescored by this server. Seconds are measured by the submitter and are not independently verified.
 12. This is a development set, not an independent final test set.
+"""
+
+AGENT_SETUP = """Set up project instructions in your topo-agent checkout.
+Source of truth: https://github.com/Mirai-Climbing/topo-agent/blob/main/AGENTS.md
+Keep the existing AGENTS.md rules; do not replace its Git, tests, privacy, or evaluation rules.
+
+For Codex and Muse Code, append this section to the checkout's AGENTS.md:
+
+## Shared experiment MCP
+
+- Connect the topo-experiments MCP server before experiment work.
+- Before an experiment, call get_rules, search_experiments, and get_leaderboard.
+- Call get_benchmark for the dataset version and all required case IDs.
+- Use get_dataset_download for the eight-photo dataset and verify its SHA-256.
+- After every experiment, call submit_experiment with your name, code commit, settings, result, and learning. Update docs/experiments.md and docs/learnings.md too.
+- Submit all annotated routes, including failures, with submit_run; never submit a partial leaderboard run.
+- Keep predictions and traces under out/; never send API keys or personal data to MCP.
+
+For Claude Code, create or update CLAUDE.md at the checkout root. Import the existing
+project rules and add the same shared experiment section:
+
+@AGENTS.md
+
+## Shared experiment MCP
+
+Use the seven rules above. Follow the imported AGENTS.md for feature branches,
+pushes, PR approval, tests, benchmarks, privacy, and evaluation scoring.
+
+Never copy the shared write token into AGENTS.md, CLAUDE.md, or another repository file.
 """
 
 
@@ -49,6 +78,11 @@ def create_app(topo_root, database, public_base_url, allowed_host=None, write_to
     def get_rules() -> str:
         """Read team rules before planning or submitting an experiment."""
         return RULES
+
+    @mcp.tool()
+    def get_agent_setup() -> str:
+        """Get instructions for AGENTS.md or CLAUDE.md in a topo-agent checkout."""
+        return AGENT_SETUP
 
     @mcp.tool()
     def get_benchmark() -> dict:

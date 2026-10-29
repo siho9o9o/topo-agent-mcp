@@ -87,6 +87,12 @@ class ServerTests(unittest.TestCase):
             rules = (await client.call_tool("get_rules")).content[0].text
             self.assertIn("never push to main", rules)
             self.assertIn("pyflakes", rules)
+            setup = (await client.call_tool("get_agent_setup")).content[0].text
+            self.assertIn("append this section", setup)
+            self.assertIn("## Shared experiment MCP", setup)
+            self.assertIn("@AGENTS.md", setup)
+            self.assertIn("never send API keys", setup)
+            self.assertIn("Never copy the shared write token", setup)
             info = json.loads((await client.call_tool("get_benchmark")).content[0].text)
             self.assertEqual(info["routes"], 68)
             download = json.loads((await client.call_tool("get_dataset_download")).content[0].text)
