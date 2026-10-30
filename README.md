@@ -189,7 +189,29 @@ This appends or refreshes a marked MCP section in `docs/experiments.md` without 
 manual history and writes `docs/leaderboard.md` for the current dataset/evaluator
 version. Run it on a feature branch, review the diff, and follow the `topo-agent`
 repository's normal PR workflow to put the snapshot on upstream `main`. Export after
-new records are submitted; the server does not push to GitHub automatically.
+new records are submitted; the manual export does not push to GitHub.
+
+### Automatic leaderboard PRs
+
+The server operator has authorized automatic PRs for `docs/leaderboard.md` only.
+The optional hourly sync checks the latest server runs, creates a commit only when
+the leaderboard differs from upstream `main`, and creates or updates one PR from
+`bot/leaderboard-snapshot`. It runs the full offline topo-agent test suite and
+`pyflakes` before pushing. It never merges a PR or changes `docs/experiments.md`.
+If another open PR already changes the leaderboard, the sync skips that cycle.
+Experiment notes still require the manual export and normal PR workflow above.
+
+The operator's GitHub CLI login needs permission to push a feature branch and open
+a PR on `Mirai-Climbing/topo-agent`. Keep those credentials outside the repository.
+The server host runs this command with a user-level systemd timer:
+
+```bash
+TOPO_AGENT_ROOT=/path/to/pinned-topo-agent-checkout \
+TOPO_MCP_DATA_DIR=/path/to/real_routes \
+TOPO_MCP_DB=/path/to/experiments.sqlite3 \
+.venv/bin/python -m topo_agent_mcp.sync_leaderboard \
+  --repo /path/to/topo-agent --test-python /path/to/topo-agent/.venv/bin/python
+```
 
 ## Submit a run
 
